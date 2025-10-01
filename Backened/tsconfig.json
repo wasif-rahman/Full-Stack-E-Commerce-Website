@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    // File Layout
+    "rootDir": "./src",
+    "outDir": "./dist",
+
+    // Environment Settings
+    "module": "node16",
+    "moduleResolution": "node16",
+    "target": "ES2020",
+    "lib": ["ES2020"],
+    "types": ["node"],
+
+    // Other Outputs
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
+
+    // Type Safety
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+
+    // Module Import Behavior
+    "esModuleInterop": true,
+    "skipLibCheck": true
+  },
+  "exclude": ["drizzle.config.ts", "dist", "dist/**"]
+}

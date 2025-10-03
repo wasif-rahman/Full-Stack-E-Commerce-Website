@@ -9,7 +9,8 @@
     "dev": "tsc && node dist/index.js",
     "dev:watch": "nodemon",
     "build": "tsc",
-    "hmmm": "what's up wasif"
+    "hmmm": "what's up wasif",
+      "migrate": "drizzle-kit migrate"
   },
   "keywords": [],
   "author": "wasif",

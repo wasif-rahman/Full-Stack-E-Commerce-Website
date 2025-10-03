@@ -1,5 +1,6 @@
 // API Client for E-commerce Backend
-const BASE_URL = 'http://localhost:4000';
+const BASE_URL = import.meta.env.VITE_API_URL;
+
 
 interface ApiResponse<T> {
   success: boolean;

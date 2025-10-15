@@ -74,6 +74,7 @@ async function seedDatabase() {
       { name: "Modern Ceramic Dinnerware Set", price: "120.00", stock: 60, categoryId: getCategoryId("Home & Kitchen"), brand: "Cuisine Art", vendorId: vendor.id, imageUrl: "https://images.unsplash.com/photo-1622979215989-8a35c593a54b?q=80&w=1887" },
       { name: "Professional Espresso Machine", price: "499.00", stock: 30, categoryId: getCategoryId("Home & Kitchen"), brand: "BaristaPro", vendorId: vendor.id, imageUrl: "https://images.unsplash.com/photo-1565557623262-afdc9fa4a2a4?q=80&w=1887" },
       { name: "Scented Soy Wax Candle", price: "22.50", stock: 120, categoryId: getCategoryId("Home & Kitchen"), brand: "Aura Scents", vendorId: vendor.id, imageUrl: "https://images.unsplash.com/photo-1614301934272-1329528d2d0c?q=80&w=1887" },
+      { name: "Wireless Gaming Mouse", price: "79.99", stock: 85, categoryId: getCategoryId("Electronics"), brand: "GamePro", vendorId: vendor.id, imageUrl: "https://images.unsplash.com/photo-1527814050087-3793815479db?q=80&w=1922" },
     ];
 
     const insertedProducts = await db.insert(products).values(productData).returning();
@@ -92,6 +93,7 @@ async function seedDatabase() {
         ["https://images.unsplash.com/photo-1622979215989-8a35c593a54b?q=80&w=1887", "https://images.unsplash.com/photo-1556911220-bff31c812dba?q=80&w=1936"], // Dinnerware
         ["https://images.unsplash.com/photo-1565557623262-afdc9fa4a2a4?q=80&w=1887", "https://images.unsplash.com/photo-1511920183353-30b523f0a6d7?q=80&w=1887"], // Espresso Machine
         ["https://images.unsplash.com/photo-1614301934272-1329528d2d0c?q=80&w=1887", "https://images.unsplash.com/photo-1593531123023-e4a129188a1f?q=80&w=1887"], // Candle
+        ["https://images.unsplash.com/photo-1527814050087-3793815479db?q=80&w=1922", "https://images.unsplash.com/photo-1591905523172-55cdc73c4fc3?q=80&w=1915"], // Gaming Mouse
     ];
 
     const allProductImages: any[] = [];

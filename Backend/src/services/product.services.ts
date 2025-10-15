@@ -72,35 +72,57 @@ export const getProductsService = async (
   // Calculate offset for pagination
   const offset = (safePage - 1) * safeLimit;
 
-  // Query products with images (with database-level pagination)
-  const data = await db
+  // First, get paginated product IDs to ensure we limit by products, not joined rows
+  const paginatedProducts = await db
     .select({
-      product: products,
-      image: productImages,
+      id: products.id,
+      name: products.name,
+      price: products.price,
+      stock: products.stock,
+      categoryId: products.categoryId,
+      brand: products.brand,
+      imageUrl: products.imageUrl,
+      vendorId: products.vendorId,
+      createdAt: products.createdAt,
+      updatedAt: products.updatedAt,
     })
     .from(products)
-    .leftJoin(productImages, eq(products.id, productImages.productId))
     .where(conditions.length ? and(...conditions) : undefined)
-    .orderBy(orderBy, products.id, productImages.sortOrder)
+    .orderBy(orderBy)
     .limit(safeLimit)
     .offset(offset);
 
+  // Get all images for these products
+  const productIds = paginatedProducts.map(p => p.id);
+  let images: any[] = [];
+  if (productIds.length > 0) {
+    // Use a simpler approach - get images for each product individually
+    const imagePromises = productIds.map(id =>
+      db.select().from(productImages).where(eq(productImages.productId, id))
+    );
+    const imageResults = await Promise.all(imagePromises);
+    images = imageResults.flat().sort((a, b) => {
+      if (a.productId !== b.productId) return a.productId.localeCompare(b.productId);
+      return (a.sortOrder || 0) - (b.sortOrder || 0);
+    });
+  }
+
   // Group products with their images
-  const productsMap = new Map();
-  data.forEach(row => {
-    const productId = row.product.id;
-    if (!productsMap.has(productId)) {
-      productsMap.set(productId, {
-        ...row.product,
-        images: [],
-      });
-    }
-    if (row.image) {
-      productsMap.get(productId).images.push(row.image);
+  const finalProductsMap = new Map();
+  paginatedProducts.forEach(product => {
+    finalProductsMap.set(product.id, {
+      ...product,
+      images: [],
+    });
+  });
+
+  images.forEach(image => {
+    if (finalProductsMap.has(image.productId)) {
+      finalProductsMap.get(image.productId).images.push(image);
     }
   });
 
-  const paginatedData = Array.from(productsMap.values());
+  const paginatedData = Array.from(finalProductsMap.values());
 
   // Count total
   const totalResult = await db

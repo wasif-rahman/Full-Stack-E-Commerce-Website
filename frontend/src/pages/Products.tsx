@@ -60,7 +60,7 @@ const Products = () => {
         maxPrice: searchParams.get('maxPrice') ? Number(searchParams.get('maxPrice')) : undefined,
         inStock: searchParams.get('inStock') === 'true' ? true : undefined,
         page: currentPage,
-        limit: 12, // Show 12 products per page for better UX
+        limit: 6, // Show 6 products per page to test pagination
       };
 
       console.log('Loading products with params:', params);

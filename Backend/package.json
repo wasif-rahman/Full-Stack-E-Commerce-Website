@@ -10,7 +10,8 @@
     "dev:watch": "nodemon",
     "build": "tsc",
     "hmmm": "what's up wasif",
-      "migrate": "drizzle-kit migrate"
+      "migrate": "drizzle-kit migrate",
+     "db:seed": "ts-node ./src/seed.ts"
   },
   "keywords": [],
   "author": "wasif",

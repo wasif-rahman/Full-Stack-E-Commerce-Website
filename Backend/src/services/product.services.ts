@@ -69,7 +69,10 @@ export const getProductsService = async (
   else if (sort === "name") orderBy = asc(products.name);
   else if (sort === "-name") orderBy = desc(products.name);
 
-  // Query products with images
+  // Calculate offset for pagination
+  const offset = (safePage - 1) * safeLimit;
+
+  // Query products with images (with database-level pagination)
   const data = await db
     .select({
       product: products,
@@ -78,7 +81,9 @@ export const getProductsService = async (
     .from(products)
     .leftJoin(productImages, eq(products.id, productImages.productId))
     .where(conditions.length ? and(...conditions) : undefined)
-    .orderBy(orderBy, products.id, productImages.sortOrder);
+    .orderBy(orderBy, products.id, productImages.sortOrder)
+    .limit(safeLimit)
+    .offset(offset);
 
   // Group products with their images
   const productsMap = new Map();
@@ -95,13 +100,7 @@ export const getProductsService = async (
     }
   });
 
-  const productsWithImages = Array.from(productsMap.values());
-
-  // Apply pagination after grouping
-  const paginatedData = productsWithImages.slice(
-    (safePage - 1) * safeLimit,
-    safePage * safeLimit
-  );
+  const paginatedData = Array.from(productsMap.values());
 
   // Count total
   const totalResult = await db

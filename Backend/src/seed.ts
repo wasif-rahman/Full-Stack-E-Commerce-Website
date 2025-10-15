@@ -1,224 +1,131 @@
 import "dotenv/config";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
+// --- FIX: Corrected the import paths to match your exact model filenames ---
 import { users } from "./models/user.js";
 import { categories } from "./models/category.js";
 import { products } from "./models/product.js";
 import { productImages } from "./models/productImage.js";
 import bcrypt from "bcrypt";
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
-
-const db = drizzle(pool);
-
+// --- Main Seeding Function ---
 async function seedDatabase() {
-  console.log("🌱 Starting database seeding...");
+  console.log("🌱 Starting database seeding for a professional demo...");
+
+  const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }, // Required for Railway connections
+  });
+  const db = drizzle(pool);
 
   try {
-    // 1. Check existing categories
-    const existingCategories = await db.select().from(categories);
-    console.log(`📂 Found ${existingCategories.length} existing categories`);
+    // Clear existing data for a clean slate
+    console.log("🧹 Clearing existing data...");
+    await db.delete(productImages);
+    await db.delete(products);
+    await db.delete(categories);
+    await db.delete(users);
 
-    let insertedCategories = existingCategories;
+    // 1. Create a Sample Vendor
+    console.log("👥 Creating a sample vendor...");
+    const hashedPassword = await bcrypt.hash("vendorpass123", 10);
+    const [vendor] = await db
+      .insert(users)
+      .values({
+        name: "ShopHub Official Store",
+        email: "vendor@shophub.com",
+        password: hashedPassword,
+        role: "vendor" as const,
+      })
+      .returning();
 
-    if (existingCategories.length === 0) {
-      console.log("📂 Creating categories...");
-      const categoryData = [
+    if (!vendor) {
+      throw new Error("Failed to create the sample vendor. Aborting seed.");
+    }
+    
+    console.log(`✅ Created vendor: ${vendor.name}`);
+
+    // 2. Create Categories
+    console.log("📂 Creating categories...");
+    const insertedCategories = await db
+      .insert(categories)
+      .values([
         { name: "Electronics" },
-        { name: "Clothing" },
         { name: "Books" },
-        { name: "Home & Garden" },
-        { name: "Sports" },
-        { name: "Beauty" },
-        { name: "Toys" },
-        { name: "Automotive" },
-      ];
+        { name: "Apparel" },
+        { name: "Home & Kitchen" },
+      ])
+      .returning();
+    console.log(`✅ Created ${insertedCategories.length} categories.`);
 
-      insertedCategories = await db.insert(categories).values(categoryData).returning();
-      console.log(`✅ Created ${insertedCategories.length} categories`);
-    } else {
-      console.log("📂 Using existing categories");
-    }
+    const getCategoryId = (name: string) =>
+      insertedCategories.find((c) => c.name === name)?.id;
 
-    // 2. Check existing users
-    const existingUsers = await db.select().from(users);
-    console.log(`👥 Found ${existingUsers.length} existing users`);
+    // 3. Create 10 Products with Static, Professional Images
+    console.log("📦 Creating 10 sample products...");
+    const productData = [
+      { name: "Air Pro Wireless Headphones", price: "249.99", stock: 50, categoryId: getCategoryId("Electronics"), brand: "AudioPhile", vendorId: vendor.id, imageUrl: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070" },
+      { name: "4K Quantum Dot Smart TV", price: "899.00", stock: 20, categoryId: getCategoryId("Electronics"), brand: "VisionSync", vendorId: vendor.id, imageUrl: "https://images.unsplash.com/photo-1593784944039-b0f3404c118c?q=80&w=2070" },
+      { name: "Mechanical RGB Keyboard", price: "129.99", stock: 75, categoryId: getCategoryId("Electronics"), brand: "GamerGear", vendorId: vendor.id, imageUrl: "https://images.unsplash.com/photo-1618384887924-2c8ab63a68aa?q=80&w=2070" },
+      { name: "The Pragmatic Programmer", price: "45.50", stock: 100, categoryId: getCategoryId("Books"), brand: "Tech Reads", vendorId: vendor.id, imageUrl: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?q=80&w=1887" },
+      { name: "Sapiens: A Brief History of Humankind", price: "24.99", stock: 150, categoryId: getCategoryId("Books"), brand: "History Press", vendorId: vendor.id, imageUrl: "https://images.unsplash.com/photo-1589998059171-988d887df646?q=80&w=2076" },
+      { name: "Classic Denim Jacket", price: "89.99", stock: 80, categoryId: getCategoryId("Apparel"), brand: "Urban Threads", vendorId: vendor.id, imageUrl: "https://images.unsplash.com/photo-1604176354204-926873782855?q=80&w=1887" },
+      { name: "Men's Leather Oxford Shoes", price: "150.00", stock: 40, categoryId: getCategoryId("Apparel"), brand: "Gentleman's Fit", vendorId: vendor.id, imageUrl: "https://images.unsplash.com/photo-1589256463832-4a0e37813c48?q=80&w=1887" },
+      { name: "Modern Ceramic Dinnerware Set", price: "120.00", stock: 60, categoryId: getCategoryId("Home & Kitchen"), brand: "Cuisine Art", vendorId: vendor.id, imageUrl: "https://images.unsplash.com/photo-1622979215989-8a35c593a54b?q=80&w=1887" },
+      { name: "Professional Espresso Machine", price: "499.00", stock: 30, categoryId: getCategoryId("Home & Kitchen"), brand: "BaristaPro", vendorId: vendor.id, imageUrl: "https://images.unsplash.com/photo-1565557623262-afdc9fa4a2a4?q=80&w=1887" },
+      { name: "Scented Soy Wax Candle", price: "22.50", stock: 120, categoryId: getCategoryId("Home & Kitchen"), brand: "Aura Scents", vendorId: vendor.id, imageUrl: "https://images.unsplash.com/photo-1614301934272-1329528d2d0c?q=80&w=1887" },
+    ];
 
-    let insertedUsers = existingUsers;
+    const insertedProducts = await db.insert(products).values(productData).returning();
+    console.log(`✅ Created ${insertedProducts.length} products.`);
 
-    if (existingUsers.length === 0) {
-      console.log("👥 Creating users...");
-      const hashedPassword = await bcrypt.hash("password123", 10);
+    // 4. Create 2 Professional Images for Each Product
+    console.log("📸 Adding product images...");
+    const imageDataForProducts = [
+        ["https://images.unsplash.com/photo-1505740420928-5e560c06d30e?q=80&w=2070", "https://images.unsplash.com/photo-1546435770-a3e426bf4022?q=80&w=2070"], // Headphones
+        ["https://images.unsplash.com/photo-1593784944039-b0f3404c118c?q=80&w=2070", "https://images.unsplash.com/photo-1601944177324-f236eace2485?q=80&w=1935"], // TV
+        ["https://images.unsplash.com/photo-1618384887924-2c8ab63a68aa?q=80&w=2070", "https://images.unsplash.com/photo-1595225476474-875a3833b355?q=80&w=1974"], // Keyboard
+        ["https://images.unsplash.com/photo-1544947950-fa07a98d237f?q=80&w=1887", "https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=1887"], // Book 1
+        ["https://images.unsplash.com/photo-1589998059171-988d887df646?q=80&w=2076", "https://images.unsplash.com/photo-1495446815901-a7297e633e8d?q=80&w=2070"], // Book 2
+        ["https://images.unsplash.com/photo-1604176354204-926873782855?q=80&w=1887", "https://images.unsplash.com/photo-1596489675077-d13d31061f64?q=80&w=1887"], // Jacket
+        ["https://images.unsplash.com/photo-1589256463832-4a0e37813c48?q=80&w=1887", "https://images.unsplash.com/photo-1543163521-1bf539c55dd2?q=80&w=2080"], // Shoes
+        ["https://images.unsplash.com/photo-1622979215989-8a35c593a54b?q=80&w=1887", "https://images.unsplash.com/photo-1556911220-bff31c812dba?q=80&w=1936"], // Dinnerware
+        ["https://images.unsplash.com/photo-1565557623262-afdc9fa4a2a4?q=80&w=1887", "https://images.unsplash.com/photo-1511920183353-30b523f0a6d7?q=80&w=1887"], // Espresso Machine
+        ["https://images.unsplash.com/photo-1614301934272-1329528d2d0c?q=80&w=1887", "https://images.unsplash.com/photo-1593531123023-e4a129188a1f?q=80&w=1887"], // Candle
+    ];
 
-      const userData = [
-        {
-          name: "John Vendor",
-          email: "john@vendor.com",
-          password: hashedPassword,
-          role: "vendor" as const,
-        },
-        {
-          name: "Sarah Vendor",
-          email: "sarah@vendor.com",
-          password: hashedPassword,
-          role: "vendor" as const,
-        },
-        {
-          name: "Mike Customer",
-          email: "mike@customer.com",
-          password: hashedPassword,
-          role: "customer" as const,
-        },
-        {
-          name: "Admin User",
-          email: "admin@store.com",
-          password: hashedPassword,
-          role: "admin" as const,
-        },
-      ];
+    const allProductImages: any[] = [];
+    insertedProducts.forEach((product, index) => {
+        const images = imageDataForProducts[index];
+        if (product && images) {
+            allProductImages.push({
+                productId: product.id,
+                imageUrl: images[0],
+                altText: `${product.name} - Main View`,
+                sortOrder: 1,
+            });
+            allProductImages.push({
+                productId: product.id,
+                imageUrl: images[1],
+                altText: `${product.name} - Detail View`,
+                sortOrder: 2,
+            });
+        }
+    });
+    
+    const insertedImages = await db.insert(productImages).values(allProductImages).returning();
+    console.log(`✅ Created ${insertedImages.length} product images.`);
 
-      insertedUsers = await db.insert(users).values(userData).returning();
-      console.log(`✅ Created ${insertedUsers.length} users`);
-    } else {
-      console.log("👥 Using existing users");
-    }
-
-    // Get vendor IDs for products
-    const vendors = insertedUsers.filter(user => user.role === "vendor");
-
-    if (vendors.length === 0) {
-      console.log("❌ No vendors found. Please ensure vendor users exist.");
-      return;
-    }
-
-    // 3. Check existing products
-    const existingProducts = await db.select().from(products);
-    console.log(`📦 Found ${existingProducts.length} existing products`);
-
-    // Always add more products for testing, regardless of existing count
-    if (true) { // Force add products for demo
-      console.log("📦 Creating products...");
-
-      // Helper function to get category ID safely
-      const getCategoryId = (name: string) => insertedCategories.find(c => c.name === name)?.id;
-      const vendor1Id = vendors[0]?.id;
-      const vendor2Id = vendors[1]?.id;
-
-      if (!vendor1Id || !vendor2Id) {
-        console.log("❌ Vendor IDs not found. Skipping product creation.");
-        return;
-      }
-
-      const productData = [
-        // Electronics
-        { name: "Wireless Bluetooth Headphones", price: "89.99", stock: 50, categoryId: getCategoryId("Electronics"), brand: "TechSound", vendorId: vendor1Id, imageUrl: "/placeholder.svg" },
-        { name: "Smartphone 128GB", price: "699.99", stock: 25, categoryId: getCategoryId("Electronics"), brand: "PhoneCorp", vendorId: vendor1Id, imageUrl: "/placeholder.svg" },
-        { name: "Laptop 16GB RAM", price: "1299.99", stock: 15, categoryId: getCategoryId("Electronics"), brand: "ComputeMax", vendorId: vendor2Id, imageUrl: "https://picsum.photos/400/400?random=3" },
-        { name: "Wireless Mouse", price: "29.99", stock: 100, categoryId: getCategoryId("Electronics"), brand: "TechSound", vendorId: vendor1Id, imageUrl: "https://picsum.photos/400/400?random=4" },
-
-        // Clothing
-        { name: "Cotton T-Shirt", price: "19.99", stock: 200, categoryId: getCategoryId("Clothing"), brand: "ComfortWear", vendorId: vendor2Id, imageUrl: "https://picsum.photos/400/400?random=5" },
-        { name: "Denim Jeans", price: "79.99", stock: 80, categoryId: getCategoryId("Clothing"), brand: "StyleFit", vendorId: vendor2Id, imageUrl: "https://picsum.photos/400/400?random=6" },
-        { name: "Winter Jacket", price: "149.99", stock: 40, categoryId: getCategoryId("Clothing"), brand: "WarmCo", vendorId: vendor1Id, imageUrl: "https://picsum.photos/400/400?random=7" },
-
-        // Books
-        { name: "JavaScript Guide", price: "39.99", stock: 75, categoryId: getCategoryId("Books"), brand: "TechBooks", vendorId: vendor1Id, imageUrl: "https://picsum.photos/400/400?random=8" },
-        { name: "React Handbook", price: "49.99", stock: 60, categoryId: getCategoryId("Books"), brand: "DevPress", vendorId: vendor2Id, imageUrl: "https://picsum.photos/400/400?random=9" },
-        { name: "Database Design", price: "59.99", stock: 45, categoryId: getCategoryId("Books"), brand: "DataBooks", vendorId: vendor1Id, imageUrl: "https://picsum.photos/400/400?random=10" },
-
-        // Home & Garden
-        { name: "Garden Hose 50ft", price: "34.99", stock: 30, categoryId: getCategoryId("Home & Garden"), brand: "GardenPro", vendorId: vendor2Id, imageUrl: "https://picsum.photos/400/400?random=11" },
-        { name: "Indoor Plant Set", price: "24.99", stock: 90, categoryId: getCategoryId("Home & Garden"), brand: "GreenLife", vendorId: vendor1Id, imageUrl: "https://picsum.photos/400/400?random=12" },
-
-        // Sports
-        { name: "Yoga Mat", price: "29.99", stock: 120, categoryId: getCategoryId("Sports"), brand: "FitLife", vendorId: vendor2Id, imageUrl: "https://picsum.photos/400/400?random=13" },
-        { name: "Dumbbell Set 20lbs", price: "89.99", stock: 35, categoryId: getCategoryId("Sports"), brand: "StrengthPro", vendorId: vendor1Id, imageUrl: "https://picsum.photos/400/400?random=14" },
-
-        // Beauty
-        { name: "Face Moisturizer", price: "19.99", stock: 150, categoryId: getCategoryId("Beauty"), brand: "GlowBeauty", vendorId: vendor2Id, imageUrl: "https://picsum.photos/400/400?random=15" },
-        { name: "Hair Shampoo 500ml", price: "14.99", stock: 200, categoryId: getCategoryId("Beauty"), brand: "PureCare", vendorId: vendor1Id, imageUrl: "https://picsum.photos/400/400?random=16" },
-
-        // Toys
-        { name: "Building Blocks Set", price: "39.99", stock: 85, categoryId: getCategoryId("Toys"), brand: "PlayTime", vendorId: vendor2Id, imageUrl: "https://picsum.photos/400/400?random=17" },
-        { name: "Puzzle 500 Pieces", price: "24.99", stock: 95, categoryId: getCategoryId("Toys"), brand: "BrainGames", vendorId: vendor1Id, imageUrl: "https://picsum.photos/400/400?random=18" },
-
-        // Automotive
-        { name: "Car Air Freshener", price: "9.99", stock: 300, categoryId: getCategoryId("Automotive"), brand: "DriveFresh", vendorId: vendor1Id, imageUrl: "https://picsum.photos/400/400?random=19" },
-        { name: "Tire Pressure Gauge", price: "12.99", stock: 180, categoryId: getCategoryId("Automotive"), brand: "AutoTools", vendorId: vendor2Id, imageUrl: "https://picsum.photos/400/400?random=20" },
-
-        // More products for pagination testing
-        { name: "LED Desk Lamp", price: "45.99", stock: 65, categoryId: getCategoryId("Home & Garden"), brand: "LightPro", vendorId: vendor1Id, imageUrl: "https://picsum.photos/400/400?random=21" },
-        { name: "Coffee Mug Set", price: "16.99", stock: 140, categoryId: getCategoryId("Home & Garden"), brand: "HomeStyle", vendorId: vendor2Id, imageUrl: "https://picsum.photos/400/400?random=22" },
-        { name: "Wireless Charger", price: "25.99", stock: 110, categoryId: getCategoryId("Electronics"), brand: "TechSound", vendorId: vendor1Id, imageUrl: "https://picsum.photos/400/400?random=23" },
-        { name: "Notebook Set", price: "12.99", stock: 250, categoryId: getCategoryId("Books"), brand: "WriteWell", vendorId: vendor2Id, imageUrl: "https://picsum.photos/400/400?random=24" },
-      ];
-
-      // Filter out products with undefined categoryId
-      const validProducts = productData.filter(product => product.categoryId !== undefined);
-
-      let insertedProducts: any[] = [];
-      if (validProducts.length > 0) {
-        insertedProducts = await db.insert(products).values(validProducts).returning();
-        console.log(`✅ Created ${insertedProducts.length} products`);
-      } else {
-        console.log("❌ No valid products to create");
-      }
-
-      // 4. Add product images for some products
-      if (insertedProducts && insertedProducts.length > 0) {
-        console.log("📸 Adding product images...");
-
-        const productImagesData = [
-          // Images for Wireless Bluetooth Headphones
-          { productId: insertedProducts[0].id, imageUrl: "/placeholder.svg", altText: "Wireless Bluetooth Headphones - Front View", sortOrder: 1 },
-          { productId: insertedProducts[0].id, imageUrl: "https://picsum.photos/400/400?random=101", altText: "Wireless Bluetooth Headphones - Side View", sortOrder: 2 },
-          { productId: insertedProducts[0].id, imageUrl: "https://picsum.photos/400/400?random=102", altText: "Wireless Bluetooth Headphones - Back View", sortOrder: 3 },
-          { productId: insertedProducts[0].id, imageUrl: "https://picsum.photos/400/400?random=103", altText: "Wireless Bluetooth Headphones - Package", sortOrder: 4 },
-          { productId: insertedProducts[0].id, imageUrl: "https://picsum.photos/400/400?random=104", altText: "Wireless Bluetooth Headphones - In Use", sortOrder: 5 },
-
-          // Images for Smartphone 128GB
-          { productId: insertedProducts[1].id, imageUrl: "/placeholder.svg", altText: "Smartphone 128GB - Front View", sortOrder: 1 },
-          { productId: insertedProducts[1].id, imageUrl: "https://picsum.photos/400/400?random=201", altText: "Smartphone 128GB - Back View", sortOrder: 2 },
-          { productId: insertedProducts[1].id, imageUrl: "https://picsum.photos/400/400?random=202", altText: "Smartphone 128GB - Side Profile", sortOrder: 3 },
-          { productId: insertedProducts[1].id, imageUrl: "https://picsum.photos/400/400?random=203", altText: "Smartphone 128GB - Screen", sortOrder: 4 },
-          { productId: insertedProducts[1].id, imageUrl: "https://picsum.photos/400/400?random=204", altText: "Smartphone 128GB - Accessories", sortOrder: 5 },
-
-          // Images for Laptop 16GB RAM
-          { productId: insertedProducts[2].id, imageUrl: "https://picsum.photos/400/400?random=301", altText: "Laptop 16GB RAM - Open View", sortOrder: 1 },
-          { productId: insertedProducts[2].id, imageUrl: "https://picsum.photos/400/400?random=302", altText: "Laptop 16GB RAM - Keyboard", sortOrder: 2 },
-          { productId: insertedProducts[2].id, imageUrl: "https://picsum.photos/400/400?random=303", altText: "Laptop 16GB RAM - Ports", sortOrder: 3 },
-          { productId: insertedProducts[2].id, imageUrl: "https://picsum.photos/400/400?random=304", altText: "Laptop 16GB RAM - Closed", sortOrder: 4 },
-          { productId: insertedProducts[2].id, imageUrl: "https://picsum.photos/400/400?random=305", altText: "Laptop 16GB RAM - Package", sortOrder: 5 },
-        ];
-
-        const insertedProductImages = await db.insert(productImages).values(productImagesData).returning();
-        console.log(`✅ Created ${insertedProductImages.length} product images`);
-      }
-
-      console.log("\n🎉 Database seeding completed successfully!");
-      console.log("\n📋 Sample Data Summary:");
-      console.log(`   Categories: ${insertedCategories.length}`);
-      console.log(`   Users: ${insertedUsers.length} (${vendors.length} vendors, ${insertedUsers.filter(u => u.role === 'customer').length} customers, ${insertedUsers.filter(u => u.role === 'admin').length} admins)`);
-      console.log(`   Products: ${insertedProducts.length}`);
-      console.log(`   Product Images: ${insertedProducts ? insertedProducts.length * 5 : 0}`);
-
-      console.log("\n🔑 Test Accounts:");
-      console.log("   Vendor: john@vendor.com / password123");
-      console.log("   Customer: mike@customer.com / password123");
-      console.log("   Admin: admin@store.com / password123");
-
-    } else {
-      console.log("📦 Using existing products");
-    }
+    console.log("\n🎉 Professional demo database seeding completed successfully!");
 
   } catch (error) {
     console.error("❌ Error seeding database:", error);
   } finally {
     await pool.end();
+    console.log("👋 Database connection closed.");
   }
 }
 
-// Run the seeding
+// Run the seeding function
 seedDatabase();
+

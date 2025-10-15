@@ -64,6 +64,7 @@ const Products = () => {
       };
 
       console.log('Loading products with params:', params);
+      console.log('Current page:', currentPage, 'Total pages:', totalPages, 'Total products:', totalProducts);
 
       const searchQuery = searchParams.get('search') || '';
       const wordCount = searchQuery.trim().split(/\s+/).length;
@@ -97,7 +98,12 @@ const Products = () => {
           setCurrentPage(1);
         } else {
           // Response is PaginatedResponse<Product>
-          console.log('Products loaded:', productsResponse.data.data.length);
+          console.log('Products loaded:', productsResponse.data.data.length, 'of', productsResponse.data.total);
+          console.log('Pagination info:', {
+            page: productsResponse.data.page,
+            totalPages: productsResponse.data.totalPages,
+            total: productsResponse.data.total
+          });
           setProducts(productsResponse.data.data);
           setTotalProducts(productsResponse.data.total);
           setTotalPages(productsResponse.data.totalPages);
